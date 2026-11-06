@@ -26,3 +26,6 @@ wheels/
 *.db-journal
 *.db-wal
 *.db-shm
+
+# Ignore data folder
+src/
