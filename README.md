@@ -12,7 +12,7 @@ A FastAPI backend for a chatbot powered by local LLMs (Ollama). It supports conv
 # 1. Download the models (~2 GB each)
 ollama pull qwen2.5:3b
 ollama pull llama3.2:3b
-
+ollama pull nomic-embed-text
 # 2. Install dependencies
 uv sync
 
