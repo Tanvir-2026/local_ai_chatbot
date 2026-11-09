@@ -137,3 +137,25 @@ def _options() -> dict:
         "top_p": settings.top_p,
         "num_predict": settings.max_tokens,
     }
+
+def embed(text: str) -> list[float]:
+    """Turns text into a vector using the local embedding model."""
+    try:
+        r = httpx.post(
+            f"{settings.ollama_url}/api/embed",
+            json={"model": settings.embed_model, "input": text},
+            timeout=30,
+        )
+        r.raise_for_status()
+    except httpx.ConnectError:
+        raise OllamaUnavailableError()
+    except httpx.TimeoutException:
+        raise OllamaTimeoutError()
+    except httpx.HTTPStatusError as e:
+        if e.response.status_code == 404:
+            raise ModelNotFoundError(
+                f"Embedding model '{settings.embed_model}' not found. "
+                f"Run: ollama pull {settings.embed_model}"
+            )
+        raise AppError(f"Ollama error: {e.response.text}")
+    return r.json()["embeddings"][0]

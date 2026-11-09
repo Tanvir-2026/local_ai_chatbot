@@ -15,6 +15,11 @@ class Settings(BaseSettings):
     openweather_api_key: str = ""
     api_key: str = ""
     weather_timeout: int = 10
+    memory_enabled: bool 
+    chroma_path: str 
+    embed_model: str 
+    memory_top_k: int 
+    memory_max_distance: float 
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
 

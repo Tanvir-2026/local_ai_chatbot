@@ -52,3 +52,7 @@ def anon_client(client):
     """Same app, but without the API key header."""
     client.headers.pop("X-API-Key")
     return client
+
+@pytest.fixture(autouse=True)
+def no_memory_by_default(monkeypatch):
+    monkeypatch.setattr(settings, "memory_enabled", False)

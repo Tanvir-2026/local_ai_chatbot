@@ -1,4 +1,5 @@
 import json
+import logging
 import sqlite3
 import time
 from collections.abc import Iterator
@@ -9,7 +10,9 @@ from app.db.database import get_connection
 from app.models import conversation as conversation_model
 from app.models import message as message_model
 from app.schemas.chat import ChatRequest, ChatResponse, Usage
-from app.services import ollama_service, weather_service
+from app.services import ollama_service, vector_service, weather_service
+
+log = logging.getLogger(__name__)
 
 
 def _weather_context(message: str) -> tuple[dict | None, str | None]:
@@ -35,6 +38,51 @@ def _weather_context(message: str) -> tuple[dict | None, str | None]:
     return data, weather_service.format_for_llm(data)
 
 
+def _memory_context(
+    db: sqlite3.Connection, req: ChatRequest, history: list[dict]
+) -> str | None:
+    """Finds older messages from this conversation that relate to the new message
+    but are no longer in the recent-history window. Never raises."""
+    if not (settings.memory_enabled and req.conversation_id):
+        return None
+    # If the recent window already covers the whole conversation, nothing to add.
+    if message_model.count(db, req.conversation_id) <= settings.max_history_messages:
+        return None
+
+    try:
+        hits = vector_service.search(
+            req.conversation_id,
+            req.message,
+            settings.memory_top_k + len(history),
+            settings.memory_max_distance,
+        )
+    except Exception:
+        log.warning("ChromaDB memory search failed", exc_info=True)
+        return None
+
+    recent_texts = {m["content"] for m in history}
+    hits = [h for h in hits if h["content"] not in recent_texts][: settings.memory_top_k]
+    if not hits:
+        return None
+
+    hits.sort(key=lambda h: h["message_id"])  # chronological order
+    lines = "\n".join(f"- {h['role']}: {h['content']}" for h in hits)
+    return (
+        "Relevant earlier messages from this conversation (found by search, "
+        "may be incomplete). Use them only if they help answer:\n" + lines
+    )
+
+
+def _index_turn(conversation_id: str, items: list[dict]) -> None:
+    """Adds saved messages to ChromaDB. Never raises."""
+    if not settings.memory_enabled:
+        return
+    try:
+        vector_service.add_messages(conversation_id, items)
+    except Exception:
+        log.warning("Could not index messages in ChromaDB", exc_info=True)
+
+
 def _prepare(db: sqlite3.Connection, req: ChatRequest):
     """Validates the request and builds the LLM prompt.
     Returns (model, llm_messages, weather_data)."""
@@ -49,10 +97,12 @@ def _prepare(db: sqlite3.Connection, req: ChatRequest):
         )
 
     weather_data, weather_note = _weather_context(req.message)
+    memory_note = _memory_context(db, req, history)
 
     system_prompt = settings.system_prompt
-    if weather_note:
-        system_prompt += "\n\n" + weather_note
+    for note in (weather_note, memory_note):
+        if note:
+            system_prompt += "\n\n" + note
     llm_messages = (
         [{"role": "system", "content": system_prompt}]
         + history
@@ -74,7 +124,7 @@ def _save_turn(
     """Saves the user message and assistant reply. Returns (conversation_id, created_at)."""
     if not conversation_id:
         conversation_id = conversation_model.create(db, user_text[:50])["id"]
-    message_model.add(db, conversation_id, "user", user_text)
+    user_saved = message_model.add(db, conversation_id, "user", user_text)
     saved = message_model.add(
         db,
         conversation_id,
@@ -87,6 +137,14 @@ def _save_turn(
     )
     conversation_model.touch(db, conversation_id)
     db.commit()
+
+    _index_turn(
+        conversation_id,
+        [
+            {"id": user_saved["id"], "role": "user", "content": user_text},
+            {"id": saved["id"], "role": "assistant", "content": reply},
+        ],
+    )
     return conversation_id, saved["created_at"]
 
 

@@ -1,8 +1,13 @@
+import logging
 import sqlite3
 
+from app.core.config import settings
 from app.core.exceptions import ConversationNotFoundError
 from app.models import conversation as conversation_model
 from app.models import message as message_model
+from app.services import vector_service
+
+log = logging.getLogger(__name__)
 
 
 def list_conversations(db: sqlite3.Connection) -> list[dict]:
@@ -22,3 +27,9 @@ def delete_conversation(db: sqlite3.Connection, conversation_id: str) -> None:
     if not deleted:
         raise ConversationNotFoundError()
     db.commit()
+
+    if settings.memory_enabled:
+        try:
+            vector_service.delete_conversation(conversation_id)
+        except Exception:
+            log.warning("Could not delete ChromaDB entries", exc_info=True)

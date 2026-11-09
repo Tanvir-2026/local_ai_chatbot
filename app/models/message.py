@@ -55,3 +55,8 @@ def recent(db: sqlite3.Connection, conversation_id: str, limit: int) -> list[dic
         (conversation_id, limit),
     ).fetchall()
     return [dict(r) for r in rows]
+
+def count(db: sqlite3.Connection, conversation_id: str) -> int:
+    return db.execute(
+        "SELECT COUNT(*) FROM messages WHERE conversation_id = ?", (conversation_id,)
+    ).fetchone()[0]
