@@ -13,6 +13,7 @@ class Settings(BaseSettings):
     system_prompt: str = "You are a helpful assistant."
     database_path: str = "chatbot.db"
     openweather_api_key: str = ""
+    openweather_api_url: str = ""
     api_key: str = ""
     weather_timeout: int = 10
     memory_enabled: bool 

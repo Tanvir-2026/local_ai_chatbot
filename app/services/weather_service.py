@@ -54,7 +54,7 @@ def fetch_weather(city: str) -> dict:
 
     try:
         r = httpx.get(
-            settings.openweather_api_key,
+            settings.openweather_api_url,
             params={"q": city, "appid": settings.openweather_api_key, "units": "metric"},
             timeout=settings.weather_timeout,
         )
