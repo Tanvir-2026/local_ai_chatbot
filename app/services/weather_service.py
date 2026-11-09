@@ -10,7 +10,7 @@ from app.core.exceptions import (
     WeatherTimeoutError,
 )
 
-API_URL = "https://api.openweathermap.org/data/2.5/weather"
+
 
 WEATHER_KEYWORDS = re.compile(
     r"\b(weather|temperature|forecast|rain(?:ing|y)?|snow(?:ing|y)?|"
@@ -18,14 +18,14 @@ WEATHER_KEYWORDS = re.compile(
     re.IGNORECASE,
 )
 
-# "weather in New York today", "is it raining in Dhaka?", "forecast for Paris"
+
 CITY_AFTER_PREPOSITION = re.compile(
     r"\b(?:in|at|for|of|near)\s+([A-Za-z][A-Za-z .'\-]*?)"
     r"(?=\s+(?:today|tomorrow|tonight|now|right now|currently|please|this|like)\b|[?.!,]|$)",
     re.IGNORECASE,
 )
 
-# "Dhaka weather", "what is London temperature"
+
 CITY_BEFORE_KEYWORD = re.compile(
     r"\b([A-Z][a-zA-Z]+(?: [A-Z][a-zA-Z]+)*)(?:'s)? "
     r"(?:weather|temperature|forecast)\b"
@@ -54,7 +54,7 @@ def fetch_weather(city: str) -> dict:
 
     try:
         r = httpx.get(
-            API_URL,
+            settings.openweather_api_key,
             params={"q": city, "appid": settings.openweather_api_key, "units": "metric"},
             timeout=settings.weather_timeout,
         )
