@@ -5,6 +5,7 @@ from fastapi.responses import JSONResponse
 class AppError(Exception):
     status_code = 500
     detail = "Internal server error"
+    headers: dict | None = None
 
     def __init__(self, detail: str | None = None):
         if detail:
@@ -60,8 +61,19 @@ class AuthNotConfiguredError(AppError):
     status_code = 503
     detail = "Server authentication is not configured (missing API_KEY)."
 
-    
+class RateLimitError(AppError):
+    status_code = 429
+    detail = "Too many requests. Please slow down."
+
+    def __init__(self, retry_after: int):
+        super().__init__(f"Too many requests. Try again in {retry_after} seconds.")
+        self.headers = {"Retry-After": str(retry_after)}
+
 def register_exception_handlers(app: FastAPI):
     @app.exception_handler(AppError)
     async def handle_app_error(request: Request, exc: AppError):
-        return JSONResponse(status_code=exc.status_code, content={"detail": exc.detail})
+        return JSONResponse(
+            status_code=exc.status_code,
+            content={"detail": exc.detail},
+            headers=exc.headers,
+        )

@@ -1,6 +1,6 @@
 import pytest
 from fastapi.testclient import TestClient
-
+from app.core import rate_limit
 from app.core.config import settings
 from app.main import app
 from app.services import ollama_service
@@ -56,3 +56,8 @@ def anon_client(client):
 @pytest.fixture(autouse=True)
 def no_memory_by_default(monkeypatch):
     monkeypatch.setattr(settings, "memory_enabled", False)
+    
+@pytest.fixture(autouse=True)
+def no_rate_limit_by_default(monkeypatch):
+    monkeypatch.setattr(settings, "rate_limit_enabled", False)
+    rate_limit.reset()

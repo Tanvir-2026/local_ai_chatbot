@@ -21,6 +21,9 @@ class Settings(BaseSettings):
     embed_model: str 
     memory_top_k: int 
     memory_max_distance: float 
+    rate_limit_enabled: bool = True
+    rate_limit_requests: int = 10
+    rate_limit_window: int = 60
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
 

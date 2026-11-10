@@ -41,7 +41,7 @@ uv sync
 ## Run
 
 ```bash
-uv run uvicorn app.main:app --reload
+uv run fastapi dev
 ```
 
 - Swagger UI: http://127.0.0.1:8000/docs (click **Authorize** and paste your API key)

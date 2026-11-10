@@ -7,7 +7,7 @@ from app.core.exceptions import register_exception_handlers
 from app.core.security import require_api_key
 from app.db.database import init_db
 from app.routes import chat, conversations, health, models
-
+from app.core.rate_limit import rate_limit
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -19,9 +19,10 @@ app = FastAPI(title=settings.app_name, lifespan=lifespan)
 register_exception_handlers(app)
 
 protected = [Depends(require_api_key)]
+limited = [Depends(require_api_key), Depends(rate_limit)]
 app.include_router(health.router, prefix="/api", dependencies=protected)
 app.include_router(models.router, prefix="/api", dependencies=protected)
-app.include_router(chat.router, prefix="/api", dependencies=protected)
+app.include_router(chat.router, prefix="/api", dependencies=limited)
 app.include_router(conversations.router, prefix="/api", dependencies=protected)
 app.include_router(usage.router, prefix="/api", dependencies=protected)
 
